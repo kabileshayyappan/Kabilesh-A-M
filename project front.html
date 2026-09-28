@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Comic Generator</title>
+  <!-- Tailwind CSS CDN for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- html2pdf Library for generating PDF from preview -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+
+  <div class="max-w-6xl mx-auto space-y-8">
+    
+    <!-- Header -->
+    <header class="text-center space-y-2 border-b border-slate-700 pb-6">
+      <h1 class="text-4xl font-extrabold tracking-tight text-amber-400">AI Comic Strip Creator</h1>
+      <p class="text-slate-400 text-sm md:text-base">Enter your story details, preview your comic, and download as PDF.</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Left Column: Input Form -->
+      <section class="lg:col-span-4 bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl h-fit">
+        <h2 class="text-xl font-bold mb-4 text-slate-200">Story Parameters</h2>
+        <form id="comicForm" class="space-y-4">
+          
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Story Prompt</label>
+            <textarea id="prompt" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="A time traveler accidentally loses their keys in ancient Rome..." required></textarea>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Main Character</label>
+            <input type="text" id="character" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="Leo the Inventor" required>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Setting</label>
+              <input type="text" id="setting" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none" placeholder="Ancient Colosseum">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Tone</label>
+              <select id="tone" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                <option value="Humorous">Humorous</option>
+                <option value="Dramatic">Dramatic</option>
+                <option value="Sci-Fi / Action">Sci-Fi / Action</option>
+                <option value="Mysterious">Mysterious</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Art Style</label>
+            <select id="artStyle" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none">
+              <option value="Classic Comic Book">Classic Comic Book</option>
+              <option value="Manga / Anime">Manga / Anime</option>
+              <option value="Watercolor">Watercolor</option>
+              <option value="Cyberpunk Digital">Cyberpunk Digital</option>
+            </select>
+          </div>
+
+          <button type="submit" id="generateBtn" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 px-4 rounded-lg transition duration-200 shadow-md">
+            Generate Comic
+          </button>
+        </form>
+      </section>
+
+      <!-- Right Column: Interactive Preview & Download -->
+      <section class="lg:col-span-8 space-y-4">
+        
+        <!-- Controls Bar -->
+        <div class="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700">
+          <span class="text-sm font-medium text-slate-300">Live Preview</span>
+          <button id="downloadBtn" class="hidden bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-200">
+            Download PDF
+          </button>
+        </div>
+
+        <!-- Printable Comic Strip Container -->
+        <div id="comicStripWrapper" class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl min-h-[500px] flex items-center justify-center">
+          
+          <!-- Empty State -->
+          <p id="emptyState" class="text-slate-500 text-center text-sm">
+            Fill out the story details on the left and click <strong>Generate Comic</strong> to view the preview.
+          </p>
+
+          <!-- Generated Comic Sheet (Target for html2pdf) -->
+          <div id="comicStrip" class="hidden w-full bg-white text-slate-900 p-8 rounded-md space-y-6">
+            <!-- Header inside the printable comic -->
+            <div class="border-b-4 border-black pb-4 text-center">
+              <h2 id="comicTitle" class="text-3xl font-black uppercase tracking-wider">Comic Title</h2>
+              <p id="comicMeta" class="text-xs font-bold text-slate-600 mt-1 uppercase">Style: Classic | Tone: Humorous</p>
+            </div>
+
+            <!-- Grid of Panels -->
+            <div id="panelsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <!-- Panels injected dynamically via JavaScript -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    const comicForm = document.getElementById('comicForm');
+    const emptyState = document.getElementById('emptyState');
+    const comicStrip = document.getElementById('comicStrip');
+    const panelsContainer = document.getElementById('panelsContainer');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const generateBtn = document.getElementById('generateBtn');
+
+    // Simulated API call function (Replace this with real LLM & Image Generation endpoints)
+    async function mockApiGenerate(data) {
+      // Simulating a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      return {
+        title: `${data.character}'s Big Adventure`,
+        meta: `Style: ${data.artStyle} | Tone: ${data.tone}`,
+        panels: [
+          {
+            panelNum: 1,
+            narration: `${data.character} steps out into ${data.setting}, completely unaware of the chaos ahead.`,
+            imageUrl: "file:///C:/Users/ELCOT/OneDrive/Pictures/panel1"
+          },
+          {
+            panelNum: 2,
+            narration: `Suddenly, a strange energy hums in the air as the situation turns ${data.tone.toLowerCase()}.`,
+            imageUrl: "file:///C:/Users/ELCOT/OneDrive/Pictures/panel22"
+          },
+          {
+            panelNum: 3,
+            narration: `"This isn't how things were supposed to go!" shouts ${data.character}.`,
+            imageUrl: "file:///C:/Users/ELCOT/OneDrive/Pictures/panel3"
+          },
+          {
+            panelNum: 4,
+            narration: `With a quick leap, the story reaches its turning point in classic ${data.artStyle} flair.`,
+            imageUrl: "file:///C:/Users/ELCOT/OneDrive/Pictures/panel4"
+          }
+        ]
+      };
+    }
+
+    // Form submission handler
+    comicForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      // Get user input values
+      const formData = {
+        prompt: document.getElementById('prompt').value,
+        character: document.getElementById('character').value,
+        setting: document.getElementById('setting').value,
+        tone: document.getElementById('tone').value,
+        artStyle: document.getElementById('artStyle').value
+      };
+
+      // UI Loading state
+      generateBtn.innerText = 'Generating Story & Art...';
+      generateBtn.disabled = true;
+
+      try {
+        const response = await mockApiGenerate(formData);
+
+        // Populate comic header
+        document.getElementById('comicTitle').innerText = response.title;
+        document.getElementById('comicMeta').innerText = response.meta;
+
+        // Populate comic panels
+        panelsContainer.innerHTML = '';
+        response.panels.forEach(panel => {
+          const panelElement = document.createElement('div');
+          panelElement.className = "border-4 border-black p-3 bg-amber-50 flex flex-col justify-between space-y-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+          
+          panelElement.innerHTML = `
+            <div class="relative overflow-hidden border-2 border-black bg-slate-200 aspect-[4/3]">
+              <img src="${panel.imageUrl}" alt="Panel ${panel.panelNum}" class="w-full h-full object-cover" />
+              <span class="absolute top-2 left-2 bg-black text-white text-xs font-extrabold px-2 py-0.5 uppercase">Panel ${panel.panelNum}</span>
+            </div>
+            <div class="bg-white border-2 border-black p-2 text-xs font-semibold leading-relaxed">
+              ${panel.narration}
+            </div>
+          `;
+          panelsContainer.appendChild(panelElement);
+        });
+
+        // Display results
+        emptyState.classList.add('hidden');
+        comicStrip.classList.remove('hidden');
+        downloadBtn.classList.remove('hidden');
+
+      } catch (err) {
+        alert('An error occurred while generating the comic.');
+      } finally {
+        generateBtn.innerText = 'Generate Comic';
+        generateBtn.disabled = false;
+      }
+    });
+
+    // PDF Download handler using html2pdf.js
+    downloadBtn.addEventListener('click', () => {
+      const element = document.getElementById('comicStrip');
+      
+      const options = {
+        margin:       0.5,
+        filename:     'my-generated-comic.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      html2pdf().set(options).from(element).save();
+    });
+  </script>
+</body>
+</html>
